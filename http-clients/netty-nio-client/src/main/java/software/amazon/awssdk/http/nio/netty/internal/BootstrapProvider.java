@@ -15,9 +15,9 @@
 
 package software.amazon.awssdk.http.nio.netty.internal;
 
+import java.net.InetSocketAddress;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelOption;
-import java.net.InetSocketAddress;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.http.nio.netty.SdkEventLoopGroup;
 
@@ -60,7 +60,9 @@ public class BootstrapProvider {
                 .option(ChannelOption.SO_KEEPALIVE, nettyConfiguration.tcpKeepAlive())
                 .remoteAddress(InetSocketAddress.createUnresolved(host, port));
 
-        if (Boolean.TRUE.equals(useNonBlockingDnsResolver)) {
+        if (nettyConfiguration.addressResolverGroup() != null) {
+            bootstrap.resolver(nettyConfiguration.addressResolverGroup());
+        } else if (Boolean.TRUE.equals(useNonBlockingDnsResolver)) {
             bootstrap.resolver(DnsResolverLoader.init(sdkEventLoopGroup.datagramChannelFactory()));
         }
 

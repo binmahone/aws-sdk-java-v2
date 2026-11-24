@@ -104,6 +104,11 @@ public class IdempotentAsyncResponseHandler<T, R> implements TransformingAsyncRe
     }
 
     @Override
+    public boolean consumesResponseBodySynchronously() {
+        return wrappedHandler.consumesResponseBodySynchronously();
+    }
+
+    @Override
     public void onStream(Publisher<ByteBuffer> stream) {
         this.wrappedHandler.onStream(stream);
     }

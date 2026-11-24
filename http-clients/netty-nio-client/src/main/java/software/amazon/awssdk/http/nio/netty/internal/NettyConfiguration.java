@@ -15,6 +15,8 @@
 
 package software.amazon.awssdk.http.nio.netty.internal;
 
+import java.net.InetSocketAddress;
+import io.netty.resolver.AddressResolverGroup;
 import static software.amazon.awssdk.http.SdkHttpConfigurationOption.CONNECTION_ACQUIRE_TIMEOUT;
 import static software.amazon.awssdk.http.SdkHttpConfigurationOption.CONNECTION_TIMEOUT;
 import static software.amazon.awssdk.http.SdkHttpConfigurationOption.MAX_CONNECTIONS;
@@ -41,6 +43,19 @@ public final class NettyConfiguration {
     public static final int EVENTLOOP_SHUTDOWN_TIMEOUT_SECONDS = 15;
     public static final int EVENTLOOP_SHUTDOWN_FUTURE_TIMEOUT_SECONDS = 16;
     public static final int HTTP2_CONNECTION_PING_TIMEOUT_SECONDS = 5;
+
+    public static final AttributeMap.Key<Integer> HTTP1_MAX_CHUNK_SIZE = new AttributeMap.Key<Integer>(Integer.class) {};
+    public static final AttributeMap.Key<AddressResolverGroup> ADDRESS_RESOLVER_GROUP =
+        new AttributeMap.Key<AddressResolverGroup>(AddressResolverGroup.class) {};
+
+    public int http1MaxChunkSize() {
+        Integer value = configuration.get(HTTP1_MAX_CHUNK_SIZE);
+        return value == null ? 8192 : value;
+    }
+
+    public AddressResolverGroup<InetSocketAddress> addressResolverGroup() {
+        return configuration.get(ADDRESS_RESOLVER_GROUP);
+    }
 
     private final AttributeMap configuration;
 

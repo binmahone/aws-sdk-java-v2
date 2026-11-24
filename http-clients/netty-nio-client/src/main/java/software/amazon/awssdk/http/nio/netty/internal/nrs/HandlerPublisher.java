@@ -15,6 +15,8 @@
 
 package software.amazon.awssdk.http.nio.netty.internal.nrs;
 
+import software.amazon.awssdk.http.nio.netty.internal.UnboundedReadControl;
+
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandler;
@@ -85,6 +87,7 @@ public class HandlerPublisher<T> extends ChannelDuplexHandler implements Publish
     private volatile Subscriber<? super T> subscriber;
     private ChannelHandlerContext ctx;
     private long outstandingDemand = 0;
+    private boolean autoReadEnabledForBody;
     private Throwable noSubscriberError;
 
     /**
@@ -321,11 +324,22 @@ public class HandlerPublisher<T> extends ChannelDuplexHandler implements Publish
                     outstandingDemand = Long.MAX_VALUE;
                 }
             }
+            if (outstandingDemand == Long.MAX_VALUE && state != State.DRAINING && !autoReadEnabledForBody) {
+                autoReadEnabledForBody = UnboundedReadControl.enableIfEligible(ctx);
+            }
             return true;
         }
     }
 
+    private void restoreAutoRead() {
+        if (autoReadEnabledForBody) {
+            autoReadEnabledForBody = false;
+            ctx.channel().config().setAutoRead(false);
+        }
+    }
+
     private void illegalDemand() {
+        restoreAutoRead();
         cleanup();
         subscriber.onError(new IllegalArgumentException("Request for 0 or negative elements in violation of Section 3.9 "
                                                         + "of the Reactive Streams specification"));
@@ -350,6 +364,7 @@ public class HandlerPublisher<T> extends ChannelDuplexHandler implements Publish
     }
 
     private void receivedCancel() {
+        restoreAutoRead();
         switch (state) {
             case BUFFERING:
             case DEMANDING:
@@ -399,6 +414,7 @@ public class HandlerPublisher<T> extends ChannelDuplexHandler implements Publish
 
     private void publishMessage(Object message) {
         if (COMPLETE.equals(message)) {
+            restoreAutoRead();
             subscriber.onComplete();
             state = HandlerPublisher.State.DONE;
         } else {
@@ -436,6 +452,7 @@ public class HandlerPublisher<T> extends ChannelDuplexHandler implements Publish
     }
 
     private void complete() {
+        restoreAutoRead();
         switch (state) {
             case NO_SUBSCRIBER:
             case BUFFERING:
@@ -458,6 +475,7 @@ public class HandlerPublisher<T> extends ChannelDuplexHandler implements Publish
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        restoreAutoRead();
         switch (state) {
             case NO_SUBSCRIBER:
                 noSubscriberError = cause;

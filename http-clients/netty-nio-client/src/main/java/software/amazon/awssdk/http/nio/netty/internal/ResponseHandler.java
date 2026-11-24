@@ -291,6 +291,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
 
         @Override
         public void subscribe(Subscriber<? super ByteBuffer> subscriber) {
+            final boolean borrow = requestContext.handler().consumesResponseBodySynchronously();
             response.subscribe(new Subscriber<HttpContent>() {
                 @Override
                 public void onSubscribe(Subscription subscription) {
@@ -330,18 +331,22 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
                         return;
                     }
 
-                    // Needed to prevent use-after-free bug if the subscriber's onNext is asynchronous
-                    ByteBuffer byteBuffer =
-                        tryCatchFinally(() -> copyToByteBuffer(httpContent.content()),
-                                        this::onError,
-                                        httpContent::release);
+                    try {
+                        // Unconfirmed consumers receive an independent buffer with unrestricted lifetime.
+                        ByteBuffer byteBuffer = tryCatchFinally(
+                            () -> borrow ? httpContent.content().nioBuffer() : copyToByteBuffer(httpContent.content()),
+                            this::onError,
+                            () -> { if (!borrow) { httpContent.release(); } });
 
-
-                    //As per reactive-streams rule 2.13, we should not call subscriber#onError when
-                    //exception is thrown from subscriber#onNext
-                    if (byteBuffer != null) {
-                        tryCatch(() -> subscriber.onNext(byteBuffer),
-                                 this::notifyError);
+                        // Reactive-streams rule 2.13 forbids onError for a subscriber's onNext exception.
+                        if (byteBuffer != null) {
+                            tryCatch(() -> subscriber.onNext(byteBuffer), this::notifyError);
+                        }
+                    } finally {
+                        // A borrowed view remains valid until the complete synchronous callback returns.
+                        if (borrow) {
+                            httpContent.release();
+                        }
                     }
                 }
 

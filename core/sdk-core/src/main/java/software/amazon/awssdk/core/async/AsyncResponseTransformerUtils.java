@@ -37,6 +37,11 @@ public final class AsyncResponseTransformerUtils {
             responseTransformer,
             new AsyncResponseTransformerListener<ResponseT>() {
                 @Override
+                public boolean consumesResponseBodySynchronously() {
+                    return true;
+                }
+
+                @Override
                 public void transformerExceptionOccurred(Throwable t) {
                     future.completeExceptionally(t);
                 }

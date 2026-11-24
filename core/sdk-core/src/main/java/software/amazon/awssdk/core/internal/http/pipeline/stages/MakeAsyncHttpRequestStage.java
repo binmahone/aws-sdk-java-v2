@@ -287,10 +287,17 @@ public final class MakeAsyncHttpRequestStage<OutputT>
     private static final class ReadMetricsTrackingResponseHandler<ResultT>
         extends FilterTransformingAsyncHttpResponseHandler<ResultT> {
         private final RequestExecutionContext context;
+        private final TransformingAsyncResponseHandler<ResultT> synchronousDelegate;
+
+        @Override
+        public boolean consumesResponseBodySynchronously() {
+            return synchronousDelegate.consumesResponseBodySynchronously();
+        }
 
         private ReadMetricsTrackingResponseHandler(TransformingAsyncResponseHandler<ResultT> delegate,
                                                    RequestExecutionContext context) {
             super(delegate);
+            this.synchronousDelegate = delegate;
             this.context = context;
         }
 

@@ -72,6 +72,14 @@ public final class CombinedResponseAsyncHttpResponseHandler<OutputT>
     }
 
     @Override
+    public boolean consumesResponseBodySynchronously() {
+        return headersFuture != null && headersFuture.isDone()
+            && !headersFuture.isCompletedExceptionally()
+            && headersFuture.join().isSuccessful()
+            && successResponseHandler.consumesResponseBodySynchronously();
+    }
+
+    @Override
     public void onStream(Publisher<ByteBuffer> publisher) {
         Validate.isTrue(headersFuture != null, "onStream() invoked without prepare().");
         Validate.isTrue(headersFuture.isDone(), "headersFuture is still not completed when onStream() is "

@@ -79,6 +79,21 @@ import software.amazon.awssdk.utils.Validate;
 @SdkPublicApi
 public interface AsyncResponseTransformer<ResponseT, ResultT> {
     /**
+     * Whether all processing of each response-body ByteBuffer runs inline on the upstream
+     * publisher's onNext call stack, before delivery returns to that publisher.
+     * Returning true permits the HTTP transport to lend buffers whose contents are invalid
+     * after that callback returns. Implementations must not retain the buffer, a duplicate,
+     * a slice or any other view. This promise covers downstream publishers, subscribers and
+     * listeners created by this implementation: they must not queue elements or defer delivery.
+     * Copy data that must outlive the callback.
+     * Unknown wrappers and transports retain the default copying behavior.
+     */
+    default boolean consumesResponseBodySynchronously() {
+        return false;
+    }
+
+
+    /**
      * Initial call to enable any setup required before the response is handled.
      * <p>
      * Note that this will be called for each request attempt, up to the number of retries allowed by the configured {@link

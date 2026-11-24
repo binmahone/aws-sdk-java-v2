@@ -15,6 +15,9 @@
 
 package software.amazon.awssdk.http.nio.netty;
 
+import java.util.Objects;
+import java.net.InetSocketAddress;
+import io.netty.resolver.AddressResolverGroup;
 import static software.amazon.awssdk.http.HttpMetric.HTTP_CLIENT_NAME;
 import static software.amazon.awssdk.http.nio.netty.internal.NettyConfiguration.EVENTLOOP_SHUTDOWN_FUTURE_TIMEOUT_SECONDS;
 import static software.amazon.awssdk.http.nio.netty.internal.NettyConfiguration.EVENTLOOP_SHUTDOWN_QUIET_PERIOD_SECONDS;
@@ -397,6 +400,18 @@ public final class NettyNioAsyncHttpClient implements SdkAsyncHttpClient {
         Builder putChannelOption(ChannelOption channelOption, Object value);
 
         /**
+         * Maximum HTTP/1 response content chunk size in bytes. Defaults to 8192.
+         * Larger values reduce callback and allocation frequency for bulk responses.
+         */
+        Builder http1MaxChunkSize(Integer bytes);
+
+        /**
+         * Use a caller-owned resolver group. The caller closes the group after this client.
+         * This resolver takes precedence over useNonBlockingDnsResolver.
+         */
+        Builder addressResolverGroup(AddressResolverGroup<InetSocketAddress> resolver);
+
+        /**
          * Sets the max number of concurrent streams for an HTTP/2 connection. This setting is only respected when the HTTP/2
          * protocol is used.
          *
@@ -652,6 +667,22 @@ public final class NettyNioAsyncHttpClient implements SdkAsyncHttpClient {
 
         public void setTcpKeepAlive(Boolean keepConnectionAlive) {
             tcpKeepAlive(keepConnectionAlive);
+        }
+
+        @Override
+        public Builder http1MaxChunkSize(Integer bytes) {
+            if (bytes == null || bytes <= 0) {
+                throw new IllegalArgumentException("http1MaxChunkSize must be positive");
+            }
+            standardOptions.put(NettyConfiguration.HTTP1_MAX_CHUNK_SIZE, bytes);
+            return this;
+        }
+
+        @Override
+        public Builder addressResolverGroup(AddressResolverGroup<InetSocketAddress> resolver) {
+            standardOptions.put(NettyConfiguration.ADDRESS_RESOLVER_GROUP,
+                                Objects.requireNonNull(resolver, "resolver"));
+            return this;
         }
 
         @Override

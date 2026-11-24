@@ -34,6 +34,11 @@ import software.amazon.awssdk.utils.Validate;
  */
 @SdkProtectedApi
 public interface AsyncResponseTransformerListener<ResponseT> extends PublisherListener<ByteBuffer> {
+    /** Whether this listener retains no response buffer or view after its callbacks return. */
+    default boolean consumesResponseBodySynchronously() {
+        return false;
+    }
+
 
     /**
      * Invoked before {@link AsyncResponseTransformer#onResponse(Object)}
@@ -85,6 +90,11 @@ public interface AsyncResponseTransformerListener<ResponseT> extends PublisherLi
         public void onResponse(ResponseT response) {
             invoke(() -> listener.transformerOnResponse(response), "transformerOnResponse");
             delegate.onResponse(response);
+        }
+
+        @Override
+        public boolean consumesResponseBodySynchronously() {
+            return delegate.consumesResponseBodySynchronously() && listener.consumesResponseBodySynchronously();
         }
 
         @Override

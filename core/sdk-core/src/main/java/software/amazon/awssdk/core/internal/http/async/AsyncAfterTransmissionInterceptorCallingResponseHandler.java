@@ -35,6 +35,7 @@ import software.amazon.awssdk.http.SdkHttpResponse;
 public final class AsyncAfterTransmissionInterceptorCallingResponseHandler<T> implements TransformingAsyncResponseHandler<T> {
     private final TransformingAsyncResponseHandler<T> delegate;
     private final ExecutionContext context;
+    private volatile boolean responsePublisherUnchanged;
 
     public AsyncAfterTransmissionInterceptorCallingResponseHandler(TransformingAsyncResponseHandler<T> delegate,
                                                                    ExecutionContext context) {
@@ -73,6 +74,11 @@ public final class AsyncAfterTransmissionInterceptorCallingResponseHandler<T> im
     }
 
     @Override
+    public boolean consumesResponseBodySynchronously() {
+        return responsePublisherUnchanged && delegate.consumesResponseBodySynchronously();
+    }
+
+    @Override
     public void onStream(Publisher<ByteBuffer> publisher) {
         Optional<Publisher<ByteBuffer>> newPublisher = context.interceptorChain()
                                                               .modifyAsyncHttpResponse(context.interceptorContext()
@@ -82,6 +88,7 @@ public final class AsyncAfterTransmissionInterceptorCallingResponseHandler<T> im
                                                                                        context.executionAttributes())
                                                               .responsePublisher();
 
+        responsePublisherUnchanged = !newPublisher.isPresent() || newPublisher.get() == publisher;
         if (newPublisher.isPresent()) {
             delegate.onStream(newPublisher.get());
         } else {

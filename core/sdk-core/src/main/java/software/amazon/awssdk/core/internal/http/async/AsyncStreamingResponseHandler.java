@@ -59,6 +59,11 @@ public final class AsyncStreamingResponseHandler<OutputT extends SdkResponse, Re
     }
 
     @Override
+    public boolean consumesResponseBodySynchronously() {
+        return asyncResponseTransformer.consumesResponseBodySynchronously();
+    }
+
+    @Override
     public void onStream(Publisher<ByteBuffer> publisher) {
         asyncResponseTransformer.onStream(SdkPublisher.adapt(publisher));
     }

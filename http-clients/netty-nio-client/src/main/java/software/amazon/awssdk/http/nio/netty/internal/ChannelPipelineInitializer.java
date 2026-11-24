@@ -163,7 +163,7 @@ public final class ChannelPipelineInitializer extends AbstractChannelPoolHandler
     }
 
     private void configureHttp11(Channel ch, ChannelPipeline pipeline) {
-        pipeline.addLast(new HttpClientCodec());
+        pipeline.addLast(new HttpClientCodec(4096, 8192, configuration.http1MaxChunkSize()));
         ch.attr(PROTOCOL_FUTURE).get().complete(Protocol.HTTP1_1);
     }
 
